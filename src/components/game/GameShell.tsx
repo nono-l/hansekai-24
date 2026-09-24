@@ -4,8 +4,8 @@ import { Hud } from "./Hud";
 import { CourtPanel, PeoplePanel, StockPanel } from "./Panels";
 import { StoreFloor } from "./StoreFloor";
 import { WorldMap } from "./WorldMap";
-import { EndingScreen, EventModal, NewsTicker, ScenarioClear, Toast } from "./Modals";
-import { SettingsSheet } from "./Settings";
+import { CoachModal, DayHintModal, EndingScreen, EventModal, NewsTicker, ScenarioClear, Toast } from "./Modals";
+import { DebugHover, SettingsSheet } from "./Settings";
 import { saveGame } from "@/game/save";
 import { useGame } from "@/game/store";
 import type { TabId } from "@/game/types";
@@ -62,7 +62,7 @@ export function GameShell() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => useGame.getState().clearToast(), 2400);
+    const t = window.setTimeout(() => useGame.getState().clearToast(), 4200);
     return () => window.clearTimeout(t);
   }, [toast]);
 
@@ -134,6 +134,9 @@ export function GameShell() {
         })}
       </nav>
       <EventModal />
+      <DayHintModal />
+      <CoachModal />
+      <DebugHover />
       <ScenarioClear />
       <EndingScreen />
       {settings ? <SettingsSheet /> : null}

@@ -14,7 +14,9 @@ import type {
 
 export const APP_NAME = "半世界24";
 export const SAVE_VERSION = 12;
-export const HOUR_SECONDS = 2.2;
+/** 1x のとき、ゲーム内の1分。買い物一回が十数分に収まる速さ。 */
+export const MINUTE_SECONDS = 1;
+export const HOUR_SECONDS = MINUTE_SECONDS * 60;
 export const FINAL_DAY = 36;
 export const MAX_ATTRACT = 3;
 export const MAX_ATTRACT_ENDLESS = 5;
@@ -191,7 +193,7 @@ export const WARLORDS: Record<
     title: "ダンジョンの旧軍",
     family: "cave",
     blurb: "地上を捨てた将。人間の旗は、穴の中にしかない。",
-    sprite: "/game/sprites/warlords/revan.png?v=cut2",
+    sprite: "/game/sprites/warlords/revan.png?v=holes",
     den: "hollow",
   },
   varos: {
@@ -200,7 +202,7 @@ export const WARLORDS: Record<
     title: "代官",
     family: "jumon",
     blurb: "半分を預かったと自称する。りゅうおうの部下ではない、代官だ。",
-    sprite: "/game/sprites/warlords/varos.png?v=cut2",
+    sprite: "/game/sprites/warlords/varos.png?v=holes",
     den: "radaan",
   },
   hoimu: {
@@ -209,7 +211,7 @@ export const WARLORDS: Record<
     title: "冠ジェルム",
     family: "gelum",
     blurb: "胃袋で半世界を縫う。王座より、塩むすびの列を選ぶ。",
-    sprite: "/game/sprites/warlords/hoimu.png?v=cut2",
+    sprite: "/game/sprites/warlords/hoimu.png?v=holes",
     den: "marsh",
   },
   yamato: {
@@ -218,7 +220,7 @@ export const WARLORDS: Record<
     title: "監察侯",
     family: "rinkou",
     blurb: "血統を測り、禁令を降す。同じ鱗でも、彼の塔は冷たい。",
-    sprite: "/game/sprites/warlords/yamato.png?v=cut2",
+    sprite: "/game/sprites/warlords/yamato.png?v=holes",
     den: "tower",
   },
   tsukuyo: {
@@ -227,7 +229,7 @@ export const WARLORDS: Record<
     title: "魔后",
     family: "yokuga",
     blurb: "敗れた宮。氷と霧に潜み、半世界の返還を待つ。",
-    sprite: "/game/sprites/warlords/tsukuyo.png?v=cut2",
+    sprite: "/game/sprites/warlords/tsukuyo.png?v=holes",
     den: "ice",
   },
   kisera: {
@@ -236,7 +238,7 @@ export const WARLORDS: Record<
     title: "血の宗家",
     family: "rinkou",
     blurb: "りゅうおうの血は私だ、と紅が言う。台地の爪がそれを証す。",
-    sprite: "/game/sprites/warlords/kisera.png?v=cut2",
+    sprite: "/game/sprites/warlords/kisera.png?v=holes",
     den: "claw",
   },
   garyu: {
@@ -245,7 +247,7 @@ export const WARLORDS: Record<
     title: "蒼の公子",
     family: "yokuga",
     blurb: "若い翼。港の灯を集め、新しい鱗の国を夢見る。",
-    sprite: "/game/sprites/warlords/garyu.png?v=cut2",
+    sprite: "/game/sprites/warlords/garyu.png?v=holes",
     den: "port",
   },
   kazer: {
@@ -254,7 +256,7 @@ export const WARLORDS: Record<
     title: "赤の騎士",
     family: "rinkou",
     blurb: "仮面の下を誰も見ていない。荒野の牙を借り、赤月を掲げる。",
-    sprite: "/game/sprites/warlords/kazer.png?v=cut2",
+    sprite: "/game/sprites/warlords/kazer.png?v=holes",
     den: "waste",
   },
   delark: {
@@ -263,7 +265,7 @@ export const WARLORDS: Record<
     title: "忠骨",
     family: "kottou",
     blurb: "りゅうおうが自ら統治する日まで、棺は沈まない。",
-    sprite: "/game/sprites/warlords/delark.png?v=cut2",
+    sprite: "/game/sprites/warlords/delark.png?v=holes",
     den: "catacomb",
   },
   rokka: {
@@ -272,7 +274,7 @@ export const WARLORDS: Record<
     title: "奪冠",
     family: "jumon",
     blurb: "監察の印を盗んだ風。峠で顔を変え、禁令を書き換える。",
-    sprite: "/game/sprites/warlords/rokka.png?v=cut2",
+    sprite: "/game/sprites/warlords/rokka.png?v=holes",
     den: "pass",
   },
   gurea: {
@@ -281,7 +283,7 @@ export const WARLORDS: Record<
     title: "偽りの冠",
     family: "gelum",
     blurb: "われはりゅうおうの子だ、と鏡が言う。砦の牙が、それを信じた。",
-    sprite: "/game/sprites/warlords/gurea.png?v=cut2",
+    sprite: "/game/sprites/warlords/gurea.png?v=holes",
     den: "fort",
   },
 };
@@ -793,7 +795,7 @@ export const SPRITE = {
 } as const;
 
 export function warlordArt(id: WarlordId): string {
-  return `/game/portraits/${id}.png?v=hi`;
+  return `/game/portraits/${id}.png?v=holes`;
 }
 
 export function portraitSrc(id: "emperor" | FactionId | WarlordId): string {

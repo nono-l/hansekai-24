@@ -162,6 +162,26 @@ export interface FloorVisit {
   left?: boolean;
 }
 
+export interface CoachTip {
+  id: string;
+  title: string;
+  body: string;
+  /** 閉じるボタンの文言。無ければ「わかった。進める」。 */
+  action?: string;
+  /** 案内で止めたときだけ、閉じたあとに再生へ戻す。 */
+  resume?: boolean;
+}
+
+export interface DayHint {
+  day: number;
+  title: string;
+  heading: string;
+  arrival: string;
+  tips: string[];
+  /** ヒント表示で止めたときだけ、閉じたあとに再生へ戻す。 */
+  resume?: boolean;
+}
+
 export interface NewsItem {
   id: number;
   day: number;
@@ -186,6 +206,7 @@ export interface GameState {
   phase: GamePhase;
   day: number;
   hour: number;
+  minute: number;
   speed: PlaySpeed;
   /** 割り込みで止める直前の再生速度。0 は未記録。 */
   heldSpeed: PlaySpeed;
@@ -219,6 +240,12 @@ export interface GameState {
   logSeq: number;
   lastVisits: FloorVisit[];
   pendingEvent: PendingEvent | null;
+  dayHint: DayHint | null;
+  helpQueue: DayHint[];
+  coach: CoachTip | null;
+  /** 棚を置き終えるまで時間を止めて待つ。 */
+  coachWait: "shelves" | null;
+  coachSeen: Record<string, number>;
   ending: EndingId | null;
   era: GameEra;
   scenarioEnding: EndingId | null;

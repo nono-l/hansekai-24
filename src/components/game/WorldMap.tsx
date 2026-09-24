@@ -1,4 +1,5 @@
-import { useEffect, useRef, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { DENS, DEN_IDS, FACTIONS, maxAttract, WARLORDS } from "@/game/data";
 import {
   buildMapField,
@@ -18,7 +19,9 @@ export function WorldMap() {
   const game = useGame((s) => s.game);
   const selected = useGame((s) => s.ui.selectedDen);
   const selectDen = useGame((s) => s.selectDen);
+  const debug = useGame((s) => s.ui.debug);
   const attract = useGame((s) => s.attract);
+  const [scar, setScar] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLElement>(null);
 
@@ -159,8 +162,13 @@ export function WorldMap() {
     const c = (e.clientX - rect.left) / cellW;
     const r = (e.clientY - rect.top) / cellH;
     const hit = nearestDen(c, r, game);
-    if (hit) selectDen(hit);
+    if (hit) {
+      setScar(false);
+      selectDen(hit);
+    }
   };
+
+  const showScar = debug && scar;
 
   return (
     <section ref={wrapRef} className="absolute inset-0 overflow-hidden bg-bg" onClick={onMapClick}>
@@ -215,28 +223,76 @@ export function WorldMap() {
           level={game.dens[id]}
           sealed={id === "hollow" && game.caveSealed}
           rumor={id === "hollow" && !game.caveKnown}
-          onSelect={() => selectDen(id)}
+          onSelect={() => {
+            setScar(false);
+            selectDen(id);
+          }}
         />
       ))}
+      {debug ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setScar(true);
+          }}
+          aria-label="魔王の爪痕"
+          className="absolute z-10 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          style={{ left: "28%", top: "70%" }}
+        >
+          <span
+            className={cn(
+              "block size-2 rounded-[1px] border border-danger bg-danger",
+              showScar && "size-2.5 animate-[pulse-pin_1.6s_ease-in-out_infinite]",
+            )}
+          />
+          <span
+            className={cn(
+              "pointer-events-none absolute top-[calc(100%-6px)] whitespace-nowrap rounded-sm bg-surface/90 px-1.5 py-0.5 text-[10px] text-fg",
+              showScar && "text-accent",
+            )}
+          >
+            魔王の爪痕
+          </span>
+        </button>
+      ) : null}
       <div
         className="absolute bottom-3 left-3 right-3 rounded-lg border border-border bg-surface/92 p-3 sm:bottom-4 sm:left-4 sm:right-auto sm:max-w-sm"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-[11px] tracking-wide text-faint">
-          {rumorHollow
-            ? "西の断崖 · 未確認"
-            : `${den.region} · ${WARLORDS[den.warlord].leader} · ${FACTIONS[den.faction].short}`}
+          {showScar
+            ? "刃の跡"
+            : rumorHollow
+              ? "西の断崖 · 未確認"
+              : `${den.region} · ${WARLORDS[den.warlord].leader} · ${FACTIONS[den.faction].short}`}
         </p>
         <h2 className="font-display text-lg text-fg">
-          {sealedHollow ? "空のダンジョン" : rumorHollow ? "気配" : den.name}
+          {showScar ? "魔王の爪痕" : sealedHollow ? "空のダンジョン" : rumorHollow ? "気配" : den.name}
         </h2>
         <p className="mt-1 text-sm leading-relaxed text-muted">
-          {rumorHollow
-            ? "人間はダンジョンに逃げ込んだ。西の断崖の下に、まだ息がある、という噂だけがある。"
-            : sealedHollow
-              ? "注進のあと、ダンジョンは空だ。人間は客ではない。"
-              : den.blurb}
+          {showScar
+            ? "表向きは、かつての勇者の洞窟。四階で終わる顔をしている。"
+            : rumorHollow
+              ? "人間はダンジョンに逃げ込んだ。西の断崖の下に、まだ息がある、という噂だけがある。"
+              : sealedHollow
+                ? "注進のあと、ダンジョンは空だ。人間は客ではない。"
+                : den.blurb}
         </p>
+        {showScar ? (
+          <Link
+            to="/scar"
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-md bg-accent text-sm font-medium text-accent-fg"
+          >
+            降りる
+          </Link>
+        ) : (
+          <>
+        {selectedId === "radaan" ? (
+          <a href="/radaan" className="mt-2 inline-block text-sm text-accent hover:underline">
+            夜市場の文化
+          </a>
+        ) : null}
         {rumorHollow ? null : (
           <p className="mt-2 text-xs tabular-nums text-faint">
             誘致段階 {lv}/{cap} · 人口 {den.pop} · 襲撃 {Math.round(den.raid * 100)} · 灯の半径{" "}
@@ -264,6 +320,8 @@ export function WorldMap() {
                     ? `灯を渡す ${cost}G`
                     : `${lv === 0 ? "誘致する" : "誘致を深める"} ${cost}G`}
         </button>
+          </>
+        )}
       </div>
     </section>
   );

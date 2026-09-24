@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AUTO_ORDER_RATE, CAMPAIGNS, FACILITIES, FACTIONS, FEAT_IDS, PRODUCTS, PRODUCT_IDS, STAFF, WARLORDS, WARLORD_IDS, isPenniless, nextDeliveryHour, scrapPrice, stockCap, totalStock, warlordArt } from "@/game/data";
 import { PATRONS, patronSpriteFilter } from "@/game/patrons";
-import { faceCap, faceStock, gondolas } from "@/game/layout";
+import { CATALOG, faceCap, faceStock, gondolas } from "@/game/layout";
 import { facilityCap, nextBuildCost } from "@/game/sim";
 import { useGame } from "@/game/store";
 import type { FacilityId, PatronId, ProductId, StaffId, WarlordId } from "@/game/types";
@@ -33,11 +33,19 @@ export function StockPanel() {
           const p = PRODUCTS[id];
           const locked = Boolean(p.needs && game.facilities[p.needs] <= 0);
           const shelves = gondolas(game, id);
+          const shelfCost = CATALOG.find((c) => c.product === id)?.cost ?? Number.POSITIVE_INFINITY;
+          const buyShelf = shelves.length === 0 && game.gold >= shelfCost;
           const face = faceStock(game, id);
           const fcap = faceCap(game, id);
           const truck = Math.max(1, Math.round(p.cost * AUTO_ORDER_RATE));
           return (
-            <li key={id} className="rounded-md border border-border bg-elevated p-2.5">
+            <li
+              key={id}
+              className={cn(
+                "rounded-md border p-2.5",
+                buyShelf ? "border-2 border-warn bg-warn/35" : "border-border bg-elevated",
+              )}
+            >
               <div className="flex items-center gap-3">
                 <img src={p.icon} alt="" className="size-12 object-contain" crossOrigin="anonymous" />
                 <div className="min-w-0 flex-1">
@@ -435,18 +443,25 @@ function PortraitView({ id, onClose }: { id: WarlordId; onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="portrait-title"
-        className="relative flex max-h-[92vh] w-full max-w-4xl flex-col items-center gap-3 sm:flex-row sm:items-end sm:justify-center"
+        className="relative flex max-h-[92dvh] w-full max-w-4xl flex-col gap-3 overflow-y-auto overscroll-contain sm:flex-row sm:items-end sm:justify-center sm:overflow-visible"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex h-[72vh] max-w-full items-center justify-center sm:max-w-[52vw]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="sticky top-0 z-10 ml-auto h-11 shrink-0 rounded-md border border-border bg-surface px-4 text-sm text-fg sm:hidden"
+        >
+          閉じる
+        </button>
+        <div className="flex max-h-[46dvh] w-full items-center justify-center sm:h-[72vh] sm:max-h-[78dvh] sm:max-w-[52vw]">
           <img
             src={warlordArt(id)}
             alt=""
-            className="max-h-full max-w-full object-contain"
+            className="max-h-[46dvh] max-w-full object-contain sm:max-h-full"
             crossOrigin="anonymous"
           />
         </div>
-        <div className="w-full rounded-lg border border-border bg-surface p-4 sm:mb-6 sm:w-64 sm:shrink-0">
+        <div className="w-full shrink-0 rounded-lg border border-border bg-surface p-4 sm:mb-6 sm:w-64">
           <p className="text-[11px] tracking-wide text-accent">
             {w.name} · {w.title}
           </p>
@@ -455,6 +470,11 @@ function PortraitView({ id, onClose }: { id: WarlordId; onClose: () => void }) {
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">{w.blurb}</p>
           <p className="mt-2 text-xs text-faint">{FACTIONS[w.family].name}</p>
+          {id === "tsukuyo" ? (
+            <a href="/tsukuyo" className="mt-3 inline-block text-sm text-accent hover:underline">
+              月詠写真集を開く
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={onClose}

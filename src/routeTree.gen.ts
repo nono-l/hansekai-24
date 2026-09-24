@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RadaanRouteImport } from './routes/radaan'
+import { Route as ScarRouteImport } from './routes/scar'
+import { Route as TsukuyoRouteImport } from './routes/tsukuyo'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RadaanRoute = RadaanRouteImport.update({
+  id: '/radaan',
+  path: '/radaan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScarRoute = ScarRouteImport.update({
+  id: '/scar',
+  path: '/scar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TsukuyoRoute = TsukuyoRouteImport.update({
+  id: '/tsukuyo',
+  path: '/tsukuyo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/radaan': typeof RadaanRoute
+  '/scar': typeof ScarRoute
+  '/tsukuyo': typeof TsukuyoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/radaan': typeof RadaanRoute
+  '/scar': typeof ScarRoute
+  '/tsukuyo': typeof TsukuyoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/radaan': typeof RadaanRoute
+  '/scar': typeof ScarRoute
+  '/tsukuyo': typeof TsukuyoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/radaan' | '/scar' | '/tsukuyo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/radaan' | '/scar' | '/tsukuyo'
+  id: '__root__' | '/' | '/radaan' | '/scar' | '/tsukuyo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RadaanRoute: typeof RadaanRoute
+  ScarRoute: typeof ScarRoute
+  TsukuyoRoute: typeof TsukuyoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +78,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/radaan': {
+      id: '/radaan'
+      path: '/radaan'
+      fullPath: '/radaan'
+      preLoaderRoute: typeof RadaanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scar': {
+      id: '/scar'
+      path: '/scar'
+      fullPath: '/scar'
+      preLoaderRoute: typeof ScarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tsukuyo': {
+      id: '/tsukuyo'
+      path: '/tsukuyo'
+      fullPath: '/tsukuyo'
+      preLoaderRoute: typeof TsukuyoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RadaanRoute: RadaanRoute,
+  ScarRoute: ScarRoute,
+  TsukuyoRoute: TsukuyoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

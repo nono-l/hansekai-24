@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { Tag } from "lucide-react";
 import { FACTIONS, FEATS, FEAT_IDS, FINAL_DAY, MAX_PATRON_LEVEL, MAX_TRUE_NAMES, PRODUCTS, PRODUCT_IDS, SPRITE, STAFF, WARLORDS, isPenniless, patronXp, scrapPrice, spentForLevel, timeBand } from "@/game/data";
 import { PATRONS, patronSpriteFilter } from "@/game/patrons";
@@ -6,6 +6,7 @@ import {
   CATALOG,
   FLOOR_H,
   FLOOR_W,
+  countProductShelf,
   defaultCap,
   fixtureAt,
   guestRoute,
@@ -155,7 +156,7 @@ export function StoreFloor() {
       hold = 0;
       const speed = useGame.getState().game?.speed ?? 1;
       if (speed === 0) return;
-      const walk = Math.min(1.35, 0.55 + speed * 0.4);
+      const walk = Math.max(1, speed);
       setActors((prev) => {
         if (prev.length === 0) return prev;
         const out: Actor[] = [];
@@ -165,7 +166,7 @@ export function StoreFloor() {
           const body = live ? { ...a, ...live, x: a.x, y: a.y, path: a.path, step: a.step, linger: a.linger, shelfAt: a.shelfAt, regAt: a.regAt } : a;
           if (body.step >= last) {
             const p = body.path[last] ?? body;
-            const linger = body.linger + step;
+            const linger = body.linger + step * walk;
             if (linger > 0.35) {
               useGame.getState().guestLeave(body.seq);
               continue;
@@ -181,19 +182,19 @@ export function StoreFloor() {
           }
           if (body.step === body.shelfAt && body.linger < 0.55) {
             const p = body.path[body.shelfAt] ?? body;
-            out.push({ ...body, x: p.x, y: p.y, linger: body.linger + step });
+            out.push({ ...body, x: p.x, y: p.y, linger: body.linger + step * walk });
             continue;
           }
           if (body.step === body.regAt) {
             if (body.picked && !body.paid) useGame.getState().guestPay(body.seq);
             if (body.linger < 0.9) {
               const p = body.path[body.regAt] ?? body;
-              out.push({ ...body, x: p.x, y: p.y, linger: body.linger + step });
+              out.push({ ...body, x: p.x, y: p.y, linger: body.linger + step * walk });
               continue;
             }
           }
           const target = body.path[Math.min(body.step + 1, last)]!;
-          const k = 1 - Math.exp(-step * 3.1 * walk);
+          const k = 1 - Math.exp(-step * 6.2 * walk);
           const x = body.x + (target.x - body.x) * k;
           const y = body.y + (target.y - body.y) * k;
           let st = body.step;
@@ -210,13 +211,13 @@ export function StoreFloor() {
         if (prev.length === 0) return prev;
         const live = useGame.getState().game;
         if (!live) return prev;
-        const pace = Math.min(1.1, 0.38 + speed * 0.28);
+        const pace = Math.max(1, speed);
         const out: Crew[] = [];
         for (const s of prev) {
           const last = Math.max(0, s.path.length - 1);
           if (s.step >= last) {
             const p = s.path[last] ?? s;
-            const linger = s.linger + step;
+            const linger = s.linger + step * pace;
             if (linger > 1.2) {
               const path = staffWander(live, s.id, p, live.hour + 1);
               out.push({ ...s, x: p.x, y: p.y, path, step: 0, linger: 0, duty: staffDuty(s.id, live.hour) });
@@ -226,7 +227,7 @@ export function StoreFloor() {
             continue;
           }
           const target = s.path[Math.min(s.step + 1, last)]!;
-          const k = 1 - Math.exp(-step * 2.4 * pace);
+          const k = 1 - Math.exp(-step * 4.8 * pace);
           const x = s.x + (target.x - s.x) * k;
           const y = s.y + (target.y - s.y) * k;
           let st = s.step;
@@ -579,7 +580,7 @@ export function StoreFloor() {
       </div>
       {debug ? (
         <pre className="pointer-events-none absolute left-3 top-10 z-20 max-w-[min(100%-1.5rem,18rem)] rounded-sm border border-border bg-surface/80 p-2 text-[10px] leading-snug tabular-nums text-accent">
-          {`${game.day}日 ${String(game.hour).padStart(2, "0")}時 rng ${game.rng}
+          {`${game.day}日 ${String(game.hour).padStart(2, "0")}:${String(game.minute ?? 0).padStart(2, "0")} rng ${game.rng}
 客 ${actors.length}/${game.lastVisits.length} 店員 ${crew.length}
 売上 ${game.goldToday}G 欠 ${game.missedToday}
 ${actors
@@ -760,6 +761,7 @@ function ScrapCard({ onClose }: { onClose: () => void }) {
 function ShelfCard({ uid, onClose }: { uid: number; onClose: () => void }) {
   const game = useGame((s) => s.game);
   const designing = useGame((s) => s.ui.designing);
+  const order = useGame((s) => s.order);
   if (!game) return null;
   const fixture = game.layout.find((f) => f.uid === uid);
   if (!fixture || !isGondola(fixture) || !fixture.product) return null;
@@ -769,6 +771,9 @@ function ShelfCard({ uid, onClose }: { uid: number; onClose: () => void }) {
   const logs = (game.shelfLogs ?? []).filter((l) => l.uid === uid);
   const todayOut = logs.filter((l) => l.day === game.day && l.delta < 0).reduce((s, l) => s + -l.delta, 0);
   const todayIn = logs.filter((l) => l.day === game.day && l.delta > 0).reduce((s, l) => s + l.delta, 0);
+  const buy = 10;
+  const cost = Math.round(product.cost * (game.staff.includes("scribe") ? 0.9 : 1) * buy);
+  const locked = Boolean(product.needs && game.facilities[product.needs] <= 0);
   const box = cn(
     "absolute left-3 z-30 w-[min(100%-1.5rem,22rem)] rounded-lg border border-border bg-surface/95 p-3 shadow-lg",
     designing ? "bottom-28" : "bottom-3",
@@ -791,6 +796,14 @@ function ShelfCard({ uid, onClose }: { uid: number; onClose: () => void }) {
           閉じる
         </button>
       </div>
+      <button
+        type="button"
+        disabled={locked || game.gold < cost}
+        onClick={() => order(fixture.product!, buy)}
+        className="mt-3 min-h-11 w-full rounded-sm border border-border bg-elevated px-2 text-sm text-fg disabled:opacity-40"
+      >
+        今すぐ{buy}個仕入れる · {cost}G
+      </button>
       <ul className="mt-3 max-h-48 space-y-1.5 overflow-y-auto">
         {logs.length === 0 ? (
           <li className="text-xs text-muted">まだこの棚から減っていない。客が手を伸ばすと、ここに残る。</li>
@@ -1078,6 +1091,7 @@ function DesignDock() {
   const setTool = useGame((s) => s.setDesignTool);
   const rotate = useGame((s) => s.rotateHeld);
   const gold = useGame((s) => s.game?.gold ?? 0);
+  const layout = useGame((s) => s.game?.layout);
   return (
     <div
       className="absolute inset-x-2 bottom-2 z-20 rounded-lg border border-border bg-surface/95 p-2 sm:inset-x-auto sm:left-3 sm:right-auto sm:max-w-md"
@@ -1107,19 +1121,27 @@ function DesignDock() {
       <div className="flex gap-1 overflow-x-auto pb-1">
         {CATALOG.map((c) => {
           const on = tool === c.id;
+          const missing = !!c.product && countProductShelf(layout ?? [], c.product) === 0;
+          const needed = missing && gold >= c.cost;
           return (
             <button
               key={c.id}
               type="button"
               onClick={() => setTool(on ? null : c.id)}
               className={cn(
-                "flex h-16 w-20 shrink-0 flex-col items-center justify-center rounded-md border px-1 text-center",
-                on ? "border-accent bg-elevated text-accent" : "border-border bg-elevated text-fg",
+                "flex h-16 w-20 shrink-0 flex-col items-center justify-center rounded-md border-2 px-1 text-center",
+                on
+                  ? "border-accent bg-accent text-accent-fg"
+                  : needed
+                    ? "border-warn bg-warn text-bg"
+                    : "border-border bg-elevated text-fg",
                 gold < c.cost && !on && "opacity-50",
               )}
             >
               <span className="text-[11px] leading-tight">{c.name}</span>
-              <span className="text-[10px] tabular-nums text-faint">{c.cost}G</span>
+              <span className={cn("text-[10px] tabular-nums", on || needed ? "text-accent-fg" : "text-faint")}>
+                {on ? "選択中" : needed ? `未設置 ${c.cost}G` : `${c.cost}G`}
+              </span>
             </button>
           );
         })}
@@ -1128,60 +1150,86 @@ function DesignDock() {
   );
 }
 
+const OBJECTIVES_KEY = "hansekai24-objectives";
+
 function Objectives() {
   const game = useGame((s) => s.game);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(OBJECTIVES_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   if (!game) return null;
+
+  const toggle = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(OBJECTIVES_KEY, next ? "1" : "0");
+      } catch {
+        // private mode
+      }
+      return next;
+    });
+  };
+
+  let title = "開店の務め";
+  let body: ReactNode = null;
   if (game.era === "endless") {
+    title = "やりこみ · 覇業";
     const items = FEAT_IDS.map((id) => ({ done: game.feats[id], label: FEATS[id].name }));
-    return (
-      <div className="rounded-lg border border-border bg-surface/85 p-3 backdrop-blur-sm">
-        <p className="text-[11px] tracking-wide text-faint">やりこみ · 覇業</p>
-        <ul className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
-          {items.map((it) => (
-            <li
-              key={it.label}
-              className={cn("text-sm", it.done ? "text-faint line-through" : "text-fg")}
-            >
-              {it.done ? "済" : "未"} · {it.label}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-  if (game.day > 8 && game.day <= FINAL_DAY && !game.clearModal) {
-    return (
-      <div className="rounded-lg border border-border bg-surface/85 p-3 backdrop-blur-sm">
-        <p className="text-[11px] tracking-wide text-faint">シナリオ</p>
-        <p className="mt-1 text-sm text-fg">
-          {FINAL_DAY}日まで灯を守れ。クリア後が、内乱の本番だ。
-        </p>
-        <p className="mt-1 text-xs tabular-nums text-faint">残り {Math.max(0, FINAL_DAY - game.day + 1)} 日</p>
-      </div>
-    );
-  }
-  const items = [
-    { done: game.tutorial.ordered, label: "棚を発注する" },
-    { done: game.tutorial.designed, label: "店内を改装する" },
-    { done: game.tutorial.openedMap, label: "地図を開く" },
-    { done: game.tutorial.attracted, label: "巣穴を誘致する" },
-    { done: game.caveKnown, label: "西の足音に耳を貸す" },
-    { done: game.gold >= 900, label: "所持金 900G" },
-  ];
-  if (items.every((it) => it.done)) return null;
-  return (
-    <div className="rounded-lg border border-border bg-surface/85 p-3 backdrop-blur-sm">
-      <p className="text-[11px] tracking-wide text-faint">開店の務め</p>
-      <ul className="mt-1.5 space-y-1">
+    body = (
+      <ul className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
         {items.map((it) => (
-          <li
-            key={it.label}
-            className={cn("text-sm", it.done ? "text-faint line-through" : "text-fg")}
-          >
+          <li key={it.label} className={cn("text-sm", it.done ? "text-faint line-through" : "text-fg")}>
             {it.done ? "済" : "未"} · {it.label}
           </li>
         ))}
       </ul>
+    );
+  } else if (game.day > 8 && game.day <= FINAL_DAY && !game.clearModal) {
+    title = "シナリオ";
+    body = (
+      <>
+        <p className="mt-1 text-sm text-fg">{FINAL_DAY}日まで灯を守れ。クリア後が、内乱の本番だ。</p>
+        <p className="mt-1 text-xs tabular-nums text-faint">残り {Math.max(0, FINAL_DAY - game.day + 1)} 日</p>
+      </>
+    );
+  } else {
+    const items = [
+      { done: game.tutorial.ordered, label: "棚を発注する" },
+      { done: game.tutorial.designed, label: "店内を改装する" },
+      { done: game.tutorial.openedMap, label: "地図を開く" },
+      { done: game.tutorial.attracted, label: "巣穴を誘致する" },
+      { done: game.caveKnown, label: "西の足音に耳を貸す" },
+      { done: game.gold >= 900, label: "所持金 900G" },
+    ];
+    if (items.every((it) => it.done)) return null;
+    body = (
+      <ul className="mt-1.5 space-y-1">
+        {items.map((it) => (
+          <li key={it.label} className={cn("text-sm", it.done ? "text-faint line-through" : "text-fg")}>
+            {it.done ? "済" : "未"} · {it.label}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div className="pointer-events-auto rounded-lg border border-border bg-surface/85 p-2 backdrop-blur-sm sm:p-3">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        className="flex min-h-9 w-full items-center justify-between gap-3 text-left"
+      >
+        <span className="text-[11px] tracking-wide text-faint">{title}</span>
+        <span className="text-[11px] text-muted">{collapsed ? "開く" : "畳む"}</span>
+      </button>
+      {collapsed ? null : body}
     </div>
   );
 }

@@ -25,7 +25,7 @@ export function Hud() {
   const timer = useRef(0);
   if (!game) return null;
   const band = timeBand(game.hour);
-  const hourLabel = `${String(game.hour).padStart(2, "0")}:00`;
+  const hourLabel = `${String(game.hour).padStart(2, "0")}:${String(game.minute ?? 0).padStart(2, "0")}`;
   const fast = isFast(game.speed);
   const shown = fast ? game.speed : rate;
 

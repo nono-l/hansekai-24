@@ -3,6 +3,87 @@ import { useGame } from "@/game/store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
+export function CoachModal() {
+  const game = useGame((s) => s.game);
+  const tutorial = useGame((s) => s.ui.tutorial);
+  const dismiss = useGame((s) => s.dismissCoach);
+  const setTutorial = useGame((s) => s.setTutorial);
+  const mute = useGame((s) => s.setCoachMuted);
+  const coach = game?.coach;
+  if (!game || !tutorial || !coach || game.pendingEvent || game.clearModal) return null;
+  if (game.dayHint) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center sm:p-6">
+      <div className="absolute inset-0 bg-bg/75" />
+      <div
+        role="dialog"
+        aria-labelledby="coach-title"
+        className="relative max-h-[min(88dvh,36rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-5 sm:p-6"
+      >
+        <p className="text-[11px] tracking-wide text-accent">チュートリアル</p>
+        <h2 id="coach-title" className="font-display text-2xl text-fg">
+          {coach.title}
+        </h2>
+        <p className="mt-4 text-sm leading-relaxed text-muted">{coach.body}</p>
+        <Button className="mt-6 w-full min-h-11" onClick={dismiss}>
+          {coach.action ?? "わかった。進める"}
+        </Button>
+        <button
+          type="button"
+          className="mt-2 min-h-11 w-full text-sm text-muted hover:text-fg"
+          onClick={() => mute(coach.id, true)}
+        >
+          この案内は出さない
+        </button>
+        <button
+          type="button"
+          className="mt-1 min-h-11 w-full text-sm text-faint hover:text-fg"
+          onClick={() => setTutorial(false)}
+        >
+          チュートリアルはうざいからオフにする
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function DayHintModal() {
+  const game = useGame((s) => s.game);
+  const help = useGame((s) => s.ui.help);
+  const dismiss = useGame((s) => s.dismissHint);
+  const hint = game?.dayHint;
+  if (!game || !help || !hint || game.pendingEvent || game.clearModal) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-6">
+      <div className="absolute inset-0 bg-bg/75" />
+      <div
+        role="dialog"
+        aria-labelledby="hint-title"
+        className="relative max-h-[min(88dvh,40rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-5 sm:p-6"
+      >
+        <p className="text-[11px] tracking-wide text-accent">初心者ヘルプ</p>
+        <h2 id="hint-title" className="font-display text-2xl text-fg">
+          {hint.title}
+        </h2>
+        <p className="mt-4 text-sm leading-relaxed text-muted">{hint.arrival}</p>
+        <h3 className="mt-5 font-display text-lg text-fg">{hint.heading}</h3>
+        <ul className="mt-2 space-y-3">
+          {hint.tips.map((tip) => (
+            <li key={tip} className="text-sm leading-relaxed text-muted">
+              {tip}
+            </li>
+          ))}
+        </ul>
+        <Button className="mt-6 w-full min-h-11" onClick={dismiss}>
+          わかった
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function EventModal() {
   const game = useGame((s) => s.game);
   const choose = useGame((s) => s.chooseEvent);

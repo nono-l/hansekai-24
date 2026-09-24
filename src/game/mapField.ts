@@ -125,7 +125,7 @@ export interface MapField {
 }
 
 export function storeRadius(g: GameState): number {
-  const age = g.day - 1 + g.hour / 24;
+  const age = g.day - 1 + (g.hour + (g.minute ?? 0) / 60) / 24;
   const sprawl = 0.82 + 0.18 * Math.min(1, age / 8);
   const attracted = DEN_IDS.reduce((n, id) => n + (g.dens[id] > 0 ? 1 : 0), 0);
   const f = g.facilities;
@@ -151,7 +151,7 @@ export function buildMapField(g: GameState): MapField {
   const faction = new Uint8Array(N);
   const glow = new Float32Array(N);
   const store = denToCell("radaan");
-  const age = g.day - 1 + g.hour / 24;
+  const age = g.day - 1 + (g.hour + (g.minute ?? 0) / 60) / 24;
   const sprawl = 0.82 + 0.18 * Math.min(1, age / 8);
   const storeR = storeRadius(g);
   const storeR2 = storeR * storeR;

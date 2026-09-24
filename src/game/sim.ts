@@ -34,6 +34,7 @@ import {
   timeBand,
   totalStock,
 } from "./data";
+import { buildBreakHint, buildDayHint, buildRaidHint } from "./help";
 import { pick, poisson, rand, randInt } from "./rng";
 import {
   CATALOG,
@@ -363,6 +364,7 @@ export function createInitialState(): GameState {
     phase: "intro",
     day: 1,
     hour: 7,
+    minute: 0,
     speed: 0,
     heldSpeed: 1,
     gold: 540,
@@ -453,6 +455,11 @@ export function createInitialState(): GameState {
     logSeq: 0,
     lastVisits: [],
     pendingEvent: null,
+    dayHint: null,
+    helpQueue: [],
+    coach: null,
+    coachWait: null,
+    coachSeen: {},
     ending: null,
     era: "scenario",
     scenarioEnding: null,
@@ -480,6 +487,7 @@ export function migrate(raw: unknown): GameState | null {
     ...base,
     ...s,
     version: SAVE_VERSION,
+    minute: typeof s.minute === "number" ? ((s.minute % 60) + 60) % 60 : 0,
     inventory: { ...base.inventory, ...s.inventory },
     facilities: { ...base.facilities, ...s.facilities },
     dens: { ...base.dens, ...s.dens },
@@ -511,6 +519,11 @@ export function migrate(raw: unknown): GameState | null {
         : {},
     goldHistory: Array.isArray(s.goldHistory) ? s.goldHistory : base.goldHistory,
     pendingEvent: s.pendingEvent ?? null,
+    dayHint: null,
+    helpQueue: [],
+    coach: null,
+    coachWait: null,
+    coachSeen: {},
     ending: s.ending ?? null,
     era: s.era === "endless" ? "endless" : "scenario",
     scenarioEnding: s.scenarioEnding ?? null,
@@ -960,9 +973,18 @@ function maybeRaid(g: GameState) {
   g.warHeat = clamp(g.warHeat + 6, 0, 100);
   g.emperor = clamp(g.emperor - 4, 0, 100);
   pushNews(g, `襲撃。店のHP ${hurt} 減。棚が荒らされた。`, "danger");
+  pushHelp(g, buildRaidHint(g, hurt));
+}
+
+function pushHelp(g: GameState, hint: GameState["dayHint"]) {
+  if (!hint) return;
+  if (!g.helpQueue) g.helpQueue = [];
+  if (!g.dayHint) g.dayHint = hint;
+  else g.helpQueue.push(hint);
 }
 
 function endOfDay(g: GameState) {
+  pushHelp(g, buildDayHint(g));
   let marked = 0;
   let dumped = 0;
   if (!g.scrap) g.scrap = emptySold();
@@ -1092,6 +1114,7 @@ function civilWarClash(g: GameState) {
   if (g.warContract === loser) {
     g.storeHp = clamp(g.storeHp - 6, 0, MAX_HP);
     pushNews(g, "契約した旗が折れた。店に余波が来た。", "danger");
+    pushHelp(g, buildBreakHint(g, loser, winner));
   } else if (g.warContract === winner) {
     g.gold += 55;
     pushNews(g, "兵站先が勝った。御用達の金が落ちた。", "ok");
@@ -1644,37 +1667,9 @@ export function applyEventChoice(state: GameState, choice: string): GameState {
   return g;
 }
 
-export function tickHour(state: GameState): GameState {
-  const g = clone(state);
-  if (g.phase !== "playing" || g.pendingEvent || g.ending || g.clearModal) return g;
-
-  g.hour += 1;
-  if (g.hour >= 24) {
-    g.hour = 0;
-    g.day += 1;
-    endOfDay(g);
-    evalFeats(g);
-    if (g.era === "scenario" && g.day > FINAL_DAY) {
-      g.scenarioEnding = rankScenario(g);
-      g.clearModal = "scenario";
-      pauseForInterrupt(g);
-      pushNews(g, "三十六の夜が明けた。シナリオクリア。内乱は、まだ朝を迎えていない。", "ok");
-      return g;
-    }
-  }
-
-  const stamp = nowStamp(g.day, g.hour);
-  if (g.campaign && g.campaignUntil && stamp >= g.campaignUntil) {
-    pushNews(g, `${CAMPAIGNS[g.campaign].name}が切れた。`, "muted");
-    g.campaign = null;
-    g.campaignUntil = 0;
-  }
-
-  if (isDeliveryHour(g.hour)) runDelivery(g);
-  else staffRestock(g);
-
-  const lam = trafficForHour(g);
+function arriveCustomers(g: GameState, lam: number) {
   const n = Math.min(g.era === "endless" ? 12 : 9, poisson(g, lam));
+  if (n <= 0) return;
   const fresh: FloorVisit[] = [];
   for (let i = 0; i < n; i++) {
     const fac = pickFaction(g);
@@ -1686,7 +1681,48 @@ export function tickHour(state: GameState): GameState {
   const stay = g.lastVisits.filter((v) => !v.left);
   const room = Math.max(0, 14 - stay.length);
   g.lastVisits = [...stay, ...fresh.slice(0, room)];
+}
+
+export function tickMinute(state: GameState): GameState {
+  const g = clone(state);
+  if (g.phase !== "playing" || g.pendingEvent || g.ending || g.clearModal) return g;
+
+  g.minute = (g.minute ?? 0) + 1;
+  let rolled = false;
+  if (g.minute >= 60) {
+    g.minute = 0;
+    g.hour += 1;
+    rolled = true;
+    if (g.hour >= 24) {
+      g.hour = 0;
+      g.day += 1;
+      endOfDay(g);
+      evalFeats(g);
+      if (g.era === "scenario" && g.day > FINAL_DAY) {
+        g.dayHint = null;
+        g.scenarioEnding = rankScenario(g);
+        g.clearModal = "scenario";
+        pauseForInterrupt(g);
+        pushNews(g, "三十六の夜が明けた。シナリオクリア。内乱は、まだ朝を迎えていない。", "ok");
+        return g;
+      }
+    }
+  }
+
+  if (rolled) {
+    const stamp = nowStamp(g.day, g.hour);
+    if (g.campaign && g.campaignUntil && stamp >= g.campaignUntil) {
+      pushNews(g, `${CAMPAIGNS[g.campaign].name}が切れた。`, "muted");
+      g.campaign = null;
+      g.campaignUntil = 0;
+    }
+    if (isDeliveryHour(g.hour)) runDelivery(g);
+    else staffRestock(g);
+  }
+
+  arriveCustomers(g, trafficForHour(g) / 60);
   if (g.gold > g.peakGold) g.peakGold = g.gold;
+  if (!rolled) return g;
 
   maybeRaid(g);
   civilWarClash(g);
@@ -1695,6 +1731,14 @@ export function tickHour(state: GameState): GameState {
 
   const end = checkEnding(g);
   if (end) applyEnding(g, end);
+  return g;
+}
+
+export function tickHour(state: GameState): GameState {
+  let g = state;
+  for (let i = 0; i < 60 && g.phase === "playing" && !g.pendingEvent && !g.ending && !g.clearModal; i++) {
+    g = tickMinute(g);
+  }
   return g;
 }
 
@@ -2062,6 +2106,33 @@ export function beginPlay(state: GameState): GameState {
   g.phase = "playing";
   g.speed = 1;
   g.heldSpeed = 1;
+  return g;
+}
+
+export function closeCoach(state: GameState, hold = false): GameState {
+  const g = clone(state);
+  const back = Boolean(g.coach?.resume) && !hold;
+  g.coach = null;
+  if (hold) {
+    g.speed = 0;
+    g.coachWait = "shelves";
+  } else if (back && g.phase === "playing" && !g.pendingEvent && !g.clearModal && !g.ending && !g.dayHint) {
+    resumeSpeed(g);
+  }
+  return g;
+}
+
+export function closeDayHint(state: GameState): GameState {
+  const g = clone(state);
+  const back = Boolean(g.dayHint?.resume);
+  const next = g.helpQueue?.shift() ?? null;
+  if (next) {
+    next.resume = back;
+    g.dayHint = next;
+    return g;
+  }
+  g.dayHint = null;
+  if (back && g.phase === "playing" && !g.pendingEvent && !g.clearModal && !g.ending) resumeSpeed(g);
   return g;
 }
 
