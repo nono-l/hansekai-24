@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Shippori Mincho", "Yu Mincho", serif;
+  --font-sans: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif;
+
+  --color-bg: #0b0e12;
+  --color-surface: #141920;
+  --color-elevated: #1c242e;
+  --color-fg: #ece6d8;
+  --color-muted: #9aa3ad;
+  --color-faint: #6d7680;
+  --color-accent: #7ec8c0;
+  --color-accent-fg: #0b0e12;
+  --color-danger: #c45c5c;
+  --color-warn: #c4a15c;
+  --color-ok: #7aaf7e;
+  --color-coin: #c4a15c;
+  --color-border: #2a3340;
+
+  --color-gelum: #7ec8c0;
+  --color-yokuga: #7a93af;
+  --color-gabing: #b57a5c;
+  --color-kottou: #8a8f7a;
+  --color-rinkou: #c4a15c;
+  --color-jumon: #8b9bb4;
+  --color-cave: #c4b49a;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes pulse-pin {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 50%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+.guest-bob {
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+.rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guest-bob,
+  .rise-in {
+    animation: none;
+  }
+}
